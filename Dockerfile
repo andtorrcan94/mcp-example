@@ -6,4 +6,4 @@ COPY server.py ./
 RUN useradd --uid 10001 --create-home app
 USER 10001
 EXPOSE 8022
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8022"]
+CMD ["python", "server.py"]

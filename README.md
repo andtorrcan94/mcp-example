@@ -91,3 +91,25 @@ Tarda aproximadamente 40 segundos. Para detener solo este laboratorio:
 ```sh
 docker compose down
 ```
+
+## Render (backend MCP y REST)
+
+URL pública: https://mcp-example-etdm.onrender.com
+
+- MCP: https://mcp-example-etdm.onrender.com/mcp
+- Salud: https://mcp-example-etdm.onrender.com/health
+- REST: https://mcp-example-etdm.onrender.com/api/requests/TEST-001/status
+
+En Render: Docker, plan Free, Health Check Path `/health`. Deja Docker Command
+vacío para usar el CMD de la imagen. El servidor escucha el `PORT` proporcionado
+por Render; las herramientas usan ese mismo puerto para llamar a REST.
+`RENDER_EXTERNAL_HOSTNAME` permite automáticamente el dominio del despliegue.
+Para otro dominio puede configurarse `PUBLIC_BASE_URL`.
+
+En Bananabot o clientes externos configura el transporte `streamable_http`, la
+URL pública terminada en `/mcp` y autenticación ninguna. Solo contiene datos
+ficticios de lectura. Antes de probar, abre `/health` y espera una respuesta:
+el plan gratuito puede tardar aproximadamente un minuto en despertar.
+No requiere frontend ni base de datos. Clientes MCP de servidor no necesitan CORS.
+Para un cliente de navegador, agrega su origen exacto a `CORS_ALLOWED_ORIGINS`
+(lista separada por comas).

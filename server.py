@@ -3,12 +3,13 @@
 import asyncio
 import os
 import re
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import httpx
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
+from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -16,6 +17,13 @@ DELAY = float(os.getenv("DELAY_SECONDS", "20"))
 if not 0 <= DELAY <= 120:
     raise ValueError("DELAY_SECONDS must be between 0 and 120")
 PORT = int(os.getenv("PORT", "8022"))
+PUBLIC_HOST = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip() or urlsplit(os.getenv("PUBLIC_BASE_URL", "https://mcp-example-etdm.onrender.com")).hostname
+CORS_ORIGINS = [value.strip().rstrip("/") for value in os.getenv(
+    "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+).split(",") if value.strip()]
+LOCAL_HOSTS = ["localhost:*", "127.0.0.1:*", "voice-test-api:*", "host.docker.internal:*"]
+ALLOWED_HOSTS = LOCAL_HOSTS + ([PUBLIC_HOST, PUBLIC_HOST + ":*"] if PUBLIC_HOST else [])
+ALLOWED_ORIGINS = ["http://localhost:*", "http://127.0.0.1:*"] + CORS_ORIGINS + (["https://" + PUBLIC_HOST] if PUBLIC_HOST else [])
 REQUEST_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 server = MCPServer(
     "Voice Test Lab",
@@ -56,7 +64,12 @@ async def simulated_result(request_id: str, scenario: str):
     }
 
 
-@server.custom_route("/health", methods=["GET"])
+@server.custom_route("/", methods=["GET", "HEAD"])
+async def index(_request: Request):
+    return JSONResponse({"service": "Voice Test Lab", "status": "ok", "health": "/health", "mcp": "/mcp", "fixture": True})
+
+
+@server.custom_route("/health", methods=["GET", "HEAD"])
 async def health(_request: Request):
     return JSONResponse({"status": "ok", "fixture": True, "delay_seconds": DELAY})
 
@@ -118,12 +131,19 @@ app = server.streamable_http_app(
     stateless_http=True,
     json_response=True,
     transport_security=TransportSecuritySettings(
-        allowed_hosts=[
-            "localhost:*",
-            "127.0.0.1:*",
-            "voice-test-api:*",
-            "host.docker.internal:*",
-        ],
-        allowed_origins=["http://localhost:*", "http://127.0.0.1:*"],
+        allowed_hosts=ALLOWED_HOSTS,
+        allowed_origins=ALLOWED_ORIGINS,
     ),
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_methods=["GET", "HEAD", "POST", "OPTIONS", "DELETE"],
+    allow_headers=["Content-Type", "mcp-protocol-version", "mcp-session-id"],
+    expose_headers=["mcp-session-id"],
+)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=PORT)

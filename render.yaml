@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: mcp-example-etdm
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DELAY_SECONDS
+        value: "20"
