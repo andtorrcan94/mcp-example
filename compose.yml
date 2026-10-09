@@ -1,0 +1,20 @@
+services:
+  voice-test-api:
+    build: .
+    container_name: voice-test-api
+    environment:
+      DELAY_SECONDS: ${DELAY_SECONDS:-20}
+    ports:
+      - "127.0.0.1:8022:8022"
+    networks:
+      - bananabot
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8022/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+networks:
+  bananabot:
+    external: true
+    name: bananabot-mono-repo_bananabot-net
